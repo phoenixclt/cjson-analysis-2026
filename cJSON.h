@@ -22,16 +22,16 @@
 
 #ifndef cJSON__h
 #define cJSON__h
-
+/*防止同一个头文件被重复包含*/
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
+/*让C++也能使用这个C库*/
 #if !defined(__WINDOWS__) && (defined(WIN32) || defined(WIN64) || defined(_MSC_VER) || defined(_WIN32))
 #define __WINDOWS__
 #endif
-
+/*检测是否为Windows系统，是的话打上Windows标记*/
 #ifdef __WINDOWS__
 
 /* When compiling for windows, we specify a specific calling convention to avoid issues where we are being called from a project with a different default calling convention.  For windows you have 3 define options:
@@ -54,12 +54,12 @@ then using the CJSON_API_VISIBILITY flag to "export" the same symbols the way CJ
 
 #define CJSON_CDECL __cdecl
 #define CJSON_STDCALL __stdcall
-
+/*定义两个宏，用来表示参数怎么传，栈怎么清理*/
 /* export symbols by default, this is necessary for copy pasting the C and header file */
 #if !defined(CJSON_HIDE_SYMBOLS) && !defined(CJSON_IMPORT_SYMBOLS) && !defined(CJSON_EXPORT_SYMBOLS)
 #define CJSON_EXPORT_SYMBOLS
 #endif
-
+/*如果用户没指定，默认是“导出符号”*/
 #if defined(CJSON_HIDE_SYMBOLS)
 #define CJSON_PUBLIC(type)   type CJSON_STDCALL
 #elif defined(CJSON_EXPORT_SYMBOLS)
@@ -67,22 +67,23 @@ then using the CJSON_API_VISIBILITY flag to "export" the same symbols the way CJ
 #elif defined(CJSON_IMPORT_SYMBOLS)
 #define CJSON_PUBLIC(type)   __declspec(dllimport) type CJSON_STDCALL
 #endif
+/*根据选项，CJSON_PUBLIC（type）会展开成不同样子*/
 #else /* !__WINDOWS__ */
 #define CJSON_CDECL
 #define CJSON_STDCALL
-
+/*不是Windows，两个宏定义为空*/
 #if (defined(__GNUC__) || defined(__SUNPRO_CC) || defined (__SUNPRO_C)) && defined(CJSON_API_VISIBILITY)
 #define CJSON_PUBLIC(type)   __attribute__((visibility("default"))) type
 #else
 #define CJSON_PUBLIC(type) type
 #endif
 #endif
-
+/*CJSON的所有公开函数都是用CJSON_PUBLIC修饰的，调用时不用在意底层细节*/
 /* project version */
 #define CJSON_VERSION_MAJOR 1
 #define CJSON_VERSION_MINOR 7
 #define CJSON_VERSION_PATCH 19
-
+/*库的版本号*/
 #include <stddef.h>
 
 /* cJSON Types: */
@@ -98,28 +99,32 @@ then using the CJSON_API_VISIBILITY flag to "export" the same symbols the way CJ
 
 #define cJSON_IsReference 256
 #define cJSON_StringIsConst 512
-
+/*这些是位标志，用来表示一个cJSON节点的类型或属性，用1<<0可以使每种类型只占一个比特位，且可以组合*/
 /* The cJSON structure: */
 typedef struct cJSON
 {
     /* next/prev allow you to walk array/object chains. Alternatively, use GetArraySize/GetArrayItem/GetObjectItem */
     struct cJSON *next;
     struct cJSON *prev;
+    /*通过next和prev构建双向链表，方便增删元素*/
     /* An array or object item will have a child pointer pointing to a chain of the items in the array/object. */
     struct cJSON *child;
-
+    /*如果这个节点是数组或是对象，child指向他的第一个子节点*/
     /* The type of the item, as above. */
     int type;
-
+    /*保存这个节点的类型*/
     /* The item's string, if type==cJSON_String  and type == cJSON_Raw */
     char *valuestring;
+    /*如果这个节点指向一个字符串或是原始JSON，这个指针指向实际字符串内容*/
     /* writing to valueint is DEPRECATED, use cJSON_SetNumberValue instead */
     int valueint;
     /* The item's number, if type==cJSON_Number */
     double valuedouble;
+    /*如果这个节点是数字类型，这里存他的双精度浮点值*/
 
     /* The item's name string, if this item is the child of, or is in the list of subitems of an object. */
     char *string;
+    /*如果这个节点是对象中的一个键值对，就指向键名，如果是数组中的元素就为空*/
 } cJSON;
 
 typedef struct cJSON_Hooks
@@ -128,7 +133,7 @@ typedef struct cJSON_Hooks
       void *(CJSON_CDECL *malloc_fn)(size_t sz);
       void (CJSON_CDECL *free_fn)(void *ptr);
 } cJSON_Hooks;
-
+/*允许用户自定义内存*/
 typedef int cJSON_bool;
 
 /* Limits how deeply nested arrays/objects can be before cJSON rejects to parse them.
@@ -142,7 +147,7 @@ typedef int cJSON_bool;
 #ifndef CJSON_CIRCULAR_LIMIT
 #define CJSON_CIRCULAR_LIMIT 10000
 #endif
-
+/*防止解析时栈溢出或无限递归*/
 /* returns the version of cJSON as a string */
 CJSON_PUBLIC(const char*) cJSON_Version(void);
 
