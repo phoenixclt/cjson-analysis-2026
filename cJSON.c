@@ -68,7 +68,7 @@
 #undef false
 #endif
 #define false ((cJSON_bool)0)
-
+/*强制重新定义true和false   */
 /* define isnan and isinf for ANSI C, if in C99 or above, isnan and isinf has been defined in math.h */
 #ifndef isinf
 #define isinf(d) (isnan((d - d)) && !isnan(d))
@@ -76,7 +76,7 @@
 #ifndef isnan
 #define isnan(d) (d != d)
 #endif
-
+/*自定义isinf和isnan*/
 #ifndef NAN
 #ifdef _WIN32
 #define NAN sqrt(-1.0)
@@ -90,12 +90,11 @@ typedef struct {
     size_t position;
 } error;
 static error global_error = { NULL, 0 };
-
 CJSON_PUBLIC(const char *) cJSON_GetErrorPtr(void)
 {
     return (const char*) (global_error.json + global_error.position);
 }
-
+/*用来记录解析出错的位置*/
 CJSON_PUBLIC(char *) cJSON_GetStringValue(const cJSON * const item)
 {
     if (!cJSON_IsString(item))
@@ -120,7 +119,7 @@ CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item)
 #if (CJSON_VERSION_MAJOR != 1) || (CJSON_VERSION_MINOR != 7) || (CJSON_VERSION_PATCH != 19)
     #error cJSON.h and cJSON.c have different versions. Make sure that both have the same.
 #endif
-
+/*确认版本是否一致*/
 CJSON_PUBLIC(const char*) cJSON_Version(void)
 {
     static char version[15];
@@ -159,7 +158,7 @@ typedef struct internal_hooks
     void (CJSON_CDECL *deallocate)(void *pointer);
     void *(CJSON_CDECL *reallocate)(void *pointer, size_t size);
 } internal_hooks;
-
+/*三个函数指针分别指向内存分配，释放，重新分配的函数*/
 #if defined(_MSC_VER)
 /* work around MSVC error C2322: '...' address of dllimport '...' is not static */
 static void * CJSON_CDECL internal_malloc(size_t size)
@@ -184,7 +183,7 @@ static void * CJSON_CDECL internal_realloc(void *pointer, size_t size)
 #define static_strlen(string_literal) (sizeof(string_literal) - sizeof(""))
 
 static internal_hooks global_hooks = { internal_malloc, internal_free, internal_realloc };
-
+/*内存分配的工具hooks*/
 static unsigned char* cJSON_strdup(const unsigned char* string, const internal_hooks * const hooks)
 {
     size_t length = 0;
@@ -205,7 +204,7 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_h
 
     return copy;
 }
-
+/*复制字符串*/
 CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
 {
     if (hooks == NULL)
@@ -236,9 +235,9 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
         global_hooks.reallocate = realloc;
     }
 }
-
+/*内存分配时用 hooks->allocate，释放用 hooks->deallocate*/
 /* Internal constructor. */
-static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+static cJSON *cJSON_New_Item(const internal_hooks * const hooks)/*分配一个cJSON结构体的内存，用memset把所有字节清零*/
 {
     cJSON* node = (cJSON*)hooks->allocate(sizeof(cJSON));
     if (node)
@@ -250,7 +249,7 @@ static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
 }
 
 /* Delete a cJSON structure. */
-CJSON_PUBLIC(void) cJSON_Delete(cJSON *item)
+CJSON_PUBLIC(void) cJSON_Delete(cJSON *item)/*删除一个节点及其所有子节点*/
 {
     cJSON *next = NULL;
     while (item != NULL)
@@ -274,7 +273,7 @@ CJSON_PUBLIC(void) cJSON_Delete(cJSON *item)
         item = next;
     }
 }
-
+/*谁申请谁释放，分配的内存由delete统一释放*/
 /* get the decimal point character of the current locale */
 static unsigned char get_decimal_point(void)
 {
@@ -304,7 +303,7 @@ typedef struct
 #define buffer_at_offset(buffer) ((buffer)->content + (buffer)->offset)
 
 /* Parse the input text to generate a number, and populate the result into item. */
-static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_buffer)
+static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_buffer)/*把JSON字符串中的一段解析成一个数字，并存入cJSON节点*/
 {
     double number = 0;
     unsigned char *after_end = NULL;
@@ -322,7 +321,7 @@ static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_bu
     /* copy the number into a temporary buffer and replace '.' with the decimal point
      * of the current locale (for strtod)
      * This also takes care of '\0' not necessarily being available for marking the end of the input */
-    for (i = 0; can_access_at_index(input_buffer, i); i++)
+    for (i = 0; can_access_at_index(input_buffer, i); i++)/*计算数字字符串的长度*/
     {
         switch (buffer_at_offset(input_buffer)[i])
         {
@@ -354,7 +353,7 @@ static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_bu
     }
 loop_end:
     /* malloc for temporary buffer, add 1 for '\0' */
-    number_c_string = (unsigned char *) input_buffer->hooks.allocate(number_string_length + 1);
+    number_c_string = (unsigned char *) input_buffer->hooks.allocate(number_string_length + 1);/*分配临时缓冲区，复制数字部分*/
     if (number_c_string == NULL)
     {
         return false; /* allocation failure */
@@ -363,7 +362,7 @@ loop_end:
     memcpy(number_c_string, buffer_at_offset(input_buffer), number_string_length);
     number_c_string[number_string_length] = '\0';
 
-    if (has_decimal_point)
+    if (has_decimal_point)/*处理小数点*/
     {
         for (i = 0; i < number_string_length; i++)
         {
@@ -376,7 +375,7 @@ loop_end:
     }
 
     number = strtod((const char*)number_c_string, (char**)&after_end);
-    if (number_c_string == after_end)
+    if (number_c_string == after_end)/*用strtod转换成double*/
     {
         /* free the temporary buffer */
         input_buffer->hooks.deallocate(number_c_string);
@@ -386,7 +385,7 @@ loop_end:
     item->valuedouble = number;
 
     /* use saturation in case of overflow */
-    if (number >= INT_MAX)
+    if (number >= INT_MAX)/*处理溢出*/
     {
         item->valueint = INT_MAX;
     }
@@ -401,7 +400,7 @@ loop_end:
 
     item->type = cJSON_Number;
 
-    input_buffer->offset += (size_t)(after_end - number_c_string);
+    input_buffer->offset += (size_t)(after_end - number_c_string);/*释放临时缓冲区*/
     /* free the temporary buffer */
     input_buffer->hooks.deallocate(number_c_string);
     return true;
